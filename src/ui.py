@@ -2,10 +2,13 @@
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 import os
+import logging
 # Ensure this import is correct based on your file structure
 from document_processor import RAGConverter, PANDOC_INSTALLED, pandoc_is_supported_format_locally 
 import threading
 import sys # Import sys to help with path for PyInstaller
+
+logger = logging.getLogger(__name__)
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -28,14 +31,14 @@ class App(ctk.CTk):
             if os.path.exists(icon_path):
                 self.iconbitmap(icon_path) 
             else:
-                print(f"Warning: Window icon not found at {icon_path}")
+                logger.warning(f"Window icon not found at {icon_path}")
         except Exception as e:
-            print(f"Error setting window icon: {e}")
+            logger.error(f"Error setting window icon: {e}")
 
-        self.description_label = ctk.CTkLabel(self, text="RAG Prep Tool: Converts files to Markdown (.md) for RAG systems.\n"
-                                                         "Input: Select a folder containing supported files.\n"
-                                                         "Output: ZIP archives will be created directly in the specified Output Folder Path.\n\n"
-                                                         "Support formats like: PDF, DOCX, DOC, PPTX, XLSX, XLS, CSV, TSV, HTML, ODT, RTF, TXT, EPUB, "
+        self.description_label = ctk.CTkLabel(self, text="RAG Prep Tool: Converts files to Markdown (.md) for RAG systems.\n""" \
+                                                         "Input: Select a folder containing supported files.\n""" \
+                                                         "Output: ZIP archives will be created directly in the specified Output Folder Path.\n\n""" \
+                                                         "Support formats like: PDF, DOCX, DOC, PPTX, XLSX, XLS, CSV, TSV, HTML, ODT, RTF, TXT, EPUB, """ \
                                                          "JSON, MARKDOWN, MD and common source code files.",
                       wraplength=680, justify="left")
         self.description_label.pack(pady=10, padx=10)
@@ -46,7 +49,7 @@ class App(ctk.CTk):
                                                      text_color="orange", wraplength=680, justify="left")
             self.pandoc_warning_label.pack(pady=(0,5), padx=10)
         else:
-            print("Pandoc integration enabled.")
+            logger.info("Pandoc integration enabled.")
         
         self.config_frame = ctk.CTkFrame(self)
         self.config_frame.pack(pady=5, padx=10, fill="x")
@@ -146,7 +149,8 @@ class App(ctk.CTk):
             decorative_px = int(self.decorative_px_entry.get()) if self.decorative_px_entry.get() else 0
             max_res_px = int(self.max_res_px_entry.get()) if self.max_res_px_entry.get() else 0
             image_timeout = int(self.image_timeout_entry.get()) if self.image_timeout_entry.get() else 0
-        except ValueError:
+        except ValueError as e:
+            logger.error(f"Invalid number in configuration fields: {e}")
             messagebox.showerror("Error", "Invalid number in configuration fields. Please enter valid integers.")
             return None
         config = {
@@ -207,12 +211,11 @@ class App(ctk.CTk):
             self.converter.process_folder(input_folder, output_base_folder, output_suffix)
         except PermissionError as e:
             error_msg = f"Permission error: Cannot access a file because it's in use by another process.\n\nTry closing any applications that might be viewing the files and try again.\n\nTechnical details: {str(e)}"
-            self.logger.error(f"Permission error during conversion: {str(e)}")
+            logger.error(f"Permission error during conversion: {str(e)}")
             messagebox.showerror("File Access Error", error_msg)
         except Exception as e:
             self.update_status(f"An unexpected error occurred: {e}")
+            logger.exception("An unexpected error occurred during conversion")
             messagebox.showerror("Fatal Error", f"An unexpected error occurred during conversion: {e}")
-            import traceback
-            traceback.print_exc() 
         finally:
             self.convert_button.configure(state="normal")
