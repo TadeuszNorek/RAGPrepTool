@@ -1,0 +1,25 @@
+# For the GUI
+customtkinter~=5.2.0
+
+# For PDF processing (core)
+pymupdf4llm~=0.0.24
+PyMuPDF~=1.23.0 # Or the version specifically required by your pymupdf4llm
+
+# For Image manipulation
+Pillow~=10.0
+
+# For Pandoc integration (Pandoc executable must also be installed on the system)
+pypandoc~=1.11
+
+# For HTML processing and external image downloading
+beautifulsoup4~=4.12.2
+requests~=2.31.0
+
+# For pptx processing
+python-pptx~=1.0.2
+
+# For Excel processing
+pandas>=1.5.0
+openpyxl>=3.0.0
+xlrd>=2.0.0
+tabulate>=0.9.0

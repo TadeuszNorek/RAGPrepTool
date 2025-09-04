@@ -1,0 +1,183 @@
+#!filepath document_processor/utils/file_utils.py
+import os
+import shutil
+import gc
+import time
+import logging
+import json
+
+logger = logging.getLogger(__name__)
+
+def safe_remove_directory(directory, max_attempts=3, delay=1):
+    """
+    Safely remove a directory with multiple attempts
+    
+    Args:
+        directory (str): Directory path to remove
+        max_attempts (int): Maximum number of removal attempts
+        delay (int): Seconds to wait between attempts
+        
+    Returns:
+        bool: True if directory was removed or didn't exist, False otherwise
+    """
+    if not os.path.exists(directory):
+        return True
+        
+    gc.collect()  # Force garbage collection to release file handles
+    
+    for attempt in range(max_attempts):
+        try:
+            if attempt > 0:
+                time.sleep(delay)
+            shutil.rmtree(directory)
+            logger.info(f"Successfully removed directory: {directory}")
+            return True
+        except PermissionError:
+            logger.info(f"Permission error removing {directory}, attempt {attempt+1}/{max_attempts}")
+            continue
+        except Exception as e:
+            logger.error(f"Error removing directory {directory}: {e}")
+            return False
+    
+    logger.warning(f"Could not remove directory after {max_attempts} attempts: {directory}")
+    return False
+
+class TempDirectory:
+    """Context manager for temporary directory handling"""
+    
+    def __init__(self, path, auto_remove=True):
+        """
+        Initialize temporary directory manager
+        
+        Args:
+            path (str): Directory path
+            auto_remove (bool): Whether to automatically remove the directory on exit
+        """
+        self.path = path
+        self.auto_remove = auto_remove
+    
+    def __enter__(self):
+        """Create the directory and return its path"""
+        os.makedirs(self.path, exist_ok=True)
+        return self.path
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Clean up directory if auto_remove is True"""
+        if self.auto_remove:
+            safe_remove_directory(self.path)
+
+class FileUtils:
+    """Utility class for file operations"""
+    
+    @staticmethod
+    def cleanup_nested_media_folders(output_dir):
+        """
+        Clean up directory structure by handling nested media folders
+        
+        Args:
+            output_dir (str): Parent directory containing media folder
+        """
+        media_dir = os.path.join(output_dir, "media")
+        if not (os.path.exists(media_dir) and os.path.isdir(media_dir)):
+            return
+            
+        nested_media = os.path.join(media_dir, "media")
+        if not (os.path.exists(nested_media) and os.path.isdir(nested_media)):
+            return
+            
+        logger.info(f"Found nested media folder, reorganizing: {nested_media}")
+        
+        # Track files we've already moved
+        existing_files = set(os.listdir(media_dir))
+        
+        # Move files from nested media to parent media
+        for filename in os.listdir(nested_media):
+            src_path = os.path.join(nested_media, filename)
+            
+            # Skip files that already exist in parent media folder
+            if filename in existing_files:
+                logger.info(f"Skipping duplicate file: {filename}")
+                try:
+                    os.remove(src_path)  # Remove duplicate in nested folder
+                except Exception as e:
+                    logger.warning(f"Failed to remove duplicate {src_path}: {e}")
+                continue
+            
+            # Move unique files
+            dest_path = os.path.join(media_dir, filename)
+            try:
+                shutil.move(src_path, dest_path)
+                existing_files.add(filename)  # Track that we've moved this file
+            except Exception as e:
+                logger.warning(f"Failed to move {src_path}: {e}")
+        
+        # Remove the now-empty nested media folder
+        try:
+            if os.path.exists(nested_media) and not os.listdir(nested_media):
+                os.rmdir(nested_media)
+                logger.info("Removed empty nested media folder")
+        except Exception as e:
+            logger.warning(f"Failed to remove nested media folder: {e}")
+    
+    @staticmethod
+    def save_metadata(metadata, filepath):
+        """Save metadata to JSON file"""
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(metadata, f, indent=4)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to write metadata to {filepath}: {e}")
+            return False
+    
+    @staticmethod
+    def create_zip_package(zip_filepath, markdown_filepath, markdown_arcname, 
+                         metadata_filepath=None, media_folder=None):
+        """
+        Create a ZIP package with markdown, metadata, and media files
+        
+        Args:
+            zip_filepath (str): Output ZIP file path
+            markdown_filepath (str): Path to markdown file to include
+            markdown_arcname (str): Name of markdown file within ZIP
+            metadata_filepath (str, optional): Path to metadata file
+            media_folder (str, optional): Path to media folder
+            
+        Returns:
+            bool: True if packaging was successful, False otherwise
+        """
+        import zipfile
+        
+        logger.info(f"Creating ZIP package: {zip_filepath}")
+        try:
+            with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zf:
+                # Add markdown file
+                if os.path.exists(markdown_filepath) and os.path.getsize(markdown_filepath) > 0:
+                    zf.write(markdown_filepath, arcname=markdown_arcname)
+                else:
+                    logger.error(f"Markdown file {markdown_filepath} is missing or empty")
+                    return False
+                
+                # Add metadata if available
+                if metadata_filepath and os.path.exists(metadata_filepath):
+                    zf.write(metadata_filepath, arcname="metadata.json")
+                
+                # Add media files if available
+                media_count = 0
+                if media_folder and os.path.exists(media_folder) and os.path.isdir(media_folder):
+                    logger.info(f"Adding media from: {media_folder}")
+                    for root, _, files in os.walk(media_folder):
+                        for file in files:
+                            full_path = os.path.join(root, file)
+                            rel_path = os.path.join("media", os.path.relpath(full_path, media_folder))
+                            zf.write(full_path, arcname=rel_path.replace("\\", "/"))
+                            media_count += 1
+                    
+                    if media_count > 0:
+                        logger.info(f"Added {media_count} media files to zip")
+            
+            logger.info(f"ZIP package created successfully: {zip_filepath}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to create ZIP package: {e}", exc_info=True)
+            return False
