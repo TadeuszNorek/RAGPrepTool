@@ -7,6 +7,8 @@ Converts PowerPoint presentations to Markdown format with images.
 import os
 import hashlib
 import logging
+from typing import List, Tuple, Dict, Any, Optional
+from ..config import ConverterConfig
 from .base_processor import BaseDocumentProcessor
 
 logger = logging.getLogger(__name__)
@@ -14,20 +16,20 @@ logger = logging.getLogger(__name__)
 class PowerPointProcessor(BaseDocumentProcessor):
     """Processor for PowerPoint (PPT/PPTX) files"""
     
-    def __init__(self, config=None):
+    def __init__(self, config: Optional[ConverterConfig] = None) -> None:
         super().__init__(config)
     
     @classmethod
-    def get_supported_extensions(cls):
+    def get_supported_extensions(cls) -> List[str]:
         """Return the file extensions supported by this processor"""
         return [".pptx", ".ppt"]
     
-    def can_process(self, file_path):
+    def can_process(self, file_path: str) -> bool:
         """PowerPoint specific filtering"""
         # Base class already handles ~$ files
         return super().can_process(file_path)
     
-    def process(self, file_path, output_dir, media_dir):
+    def process(self, file_path: str, output_dir: str, media_dir: str) -> Tuple[str, Dict[str, Any]]:
         """
         Process PowerPoint file and convert to Markdown
         
@@ -64,7 +66,7 @@ class PowerPointProcessor(BaseDocumentProcessor):
         
         # Process PPTX files normally
         return self.process_powerpoint_file(file_path, media_dir)
-    def process_powerpoint_file(self, file_path, media_dir):
+    def process_powerpoint_file(self, file_path: str, media_dir: str) -> Tuple[str, Dict[str, Any]]:
         """
         Process PowerPoint (PPTX) files and convert to Markdown with images.
         
@@ -171,7 +173,7 @@ class PowerPointProcessor(BaseDocumentProcessor):
                 'error': str(e)
             }
 
-    def get_presentation_title(self, presentation):
+    def get_presentation_title(self, presentation: Any) -> Optional[str]:
         """Extract title from presentation properties"""
         if hasattr(presentation.core_properties, 'title') and presentation.core_properties.title:
             return presentation.core_properties.title
@@ -182,7 +184,7 @@ class PowerPointProcessor(BaseDocumentProcessor):
         
         return None
 
-    def get_slide_title(self, slide):
+    def get_slide_title(self, slide: Any) -> Optional[str]:
         """Extract title from a slide"""
         for shape in slide.shapes:
             # Safe check for title shapes - approach 1: text and is_title property
@@ -206,7 +208,7 @@ class PowerPointProcessor(BaseDocumentProcessor):
         
         return None
 
-    def extract_slide_text(self, slide):
+    def extract_slide_text(self, slide: Any) -> str:
         """Extract formatted text content from a slide"""
         text_content = []
         
@@ -236,13 +238,13 @@ class PowerPointProcessor(BaseDocumentProcessor):
         
         return "\n".join(text_content) if text_content else ""
 
-    def extract_slide_notes(self, slide):
+    def extract_slide_notes(self, slide: Any) -> Optional[str]:
         """Extract notes from a slide"""
         if slide.has_notes_slide and slide.notes_slide.notes_text_frame.text:
             return slide.notes_slide.notes_text_frame.text.strip()
         return None
 
-    def get_image_extension(self, image_bytes):
+    def get_image_extension(self, image_bytes: bytes) -> Optional[str]:
         """Determine file extension based on image data"""
         try:
             # Try using imghdr first if available

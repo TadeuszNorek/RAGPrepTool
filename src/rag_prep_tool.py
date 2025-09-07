@@ -4,7 +4,7 @@ from logging.handlers import RotatingFileHandler
 import sys
 from ui import App
 
-def setup_logging():
+def setup_logging() -> None:
     """
     Configures logging to file and console.
     """
@@ -29,7 +29,7 @@ def setup_logging():
 
     logging.info("Logging initialized.")
 
-def main():
+def main() -> None:
     """
     Main function to initialize and run the RAG Prep Tool application.
     """

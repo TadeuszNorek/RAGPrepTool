@@ -4,6 +4,7 @@ import io
 import base64
 import re
 import logging
+from typing import Dict, Any, Optional
 from PIL import Image, UnidentifiedImageError
 
 logger = logging.getLogger(__name__)
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 class ImageProcessor:
     """Utility class for processing and managing images"""
     
-    def __init__(self, config):
+    def __init__(self, config: Dict[str, Any]):
         """
         Initialize the image processor with config
         
@@ -20,7 +21,7 @@ class ImageProcessor:
         """
         self.config = config
     
-    def process_image(self, image_bytes, filename_suggestion=None):
+    def process_image(self, image_bytes: bytes, filename_suggestion: Optional[str] = None) -> Dict[str, Any]:
         """
         Process an image according to configuration
         
@@ -96,7 +97,7 @@ class ImageProcessor:
             logger.warning(f"Error processing image: {e}")
             return result  # Return original bytes
     
-    def process_pdf_images(self, raw_images_data, output_dir):
+    def process_pdf_images(self, raw_images_data: Dict[str, Any], output_dir: str) -> Dict[str, Any]:
         """
         Process images extracted from PDF
         
@@ -150,7 +151,7 @@ class ImageProcessor:
                 
         return processed_images_info
     
-    def update_markdown_with_processed_images(self, md_content, processed_images_info):
+    def update_markdown_with_processed_images(self, md_content: str, processed_images_info: Dict[str, Any]) -> str:
         """
         Update markdown content with processed image information
         

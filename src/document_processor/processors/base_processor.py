@@ -1,23 +1,25 @@
 #!filepath document_processor/processors/base_processor.py
 import os
 import logging
+from typing import List, Tuple, Dict, Any, Type, Callable, Optional
+from ..config import ConverterConfig
 
 logger = logging.getLogger(__name__)
 
 class BaseDocumentProcessor:
     """Base class for document processors"""
     
-    def __init__(self, config):
+    def __init__(self, config: 'ConverterConfig') -> None:
         """
         Initialize document processor with configuration
         
         Args:
             config: Configuration object or dictionary
         """
-        self.config = config
+        self.config: 'ConverterConfig' = config
     
     @classmethod
-    def get_supported_extensions(cls):
+    def get_supported_extensions(cls) -> List[str]:
         """
         Get the file extensions supported by this processor.
         Override in subclasses to specify supported extensions.
@@ -28,7 +30,7 @@ class BaseDocumentProcessor:
         return []
     
     @classmethod
-    def can_process(cls, file_path):
+    def can_process(cls, file_path: str) -> bool:
         """
         Check if this processor can handle the given file.
         
@@ -46,7 +48,7 @@ class BaseDocumentProcessor:
         return ext in cls.get_supported_extensions()
     
     @classmethod
-    def _is_common_temp_file(cls, file_path):
+    def _is_common_temp_file(cls, file_path: str) -> bool:
         """Check for common temporary file patterns"""
         filename = os.path.basename(file_path)
         
@@ -72,7 +74,7 @@ class BaseDocumentProcessor:
         
         return False
         
-    def process(self, file_path, output_dir, media_dir):
+    def process(self, file_path: str, output_dir: str, media_dir: str) -> Tuple[Optional[str], Dict[str, Any]]:
         """
         Process document and return markdown content and metadata
         
@@ -86,7 +88,7 @@ class BaseDocumentProcessor:
         """
         raise NotImplementedError("Subclasses must implement the process method")
         
-    def _safe_operation(self, operation_func, error_message, *args, **kwargs):
+    def _safe_operation(self, operation_func: Callable, error_message: str, *args: Any, **kwargs: Any) -> Any:
         """
         Safely execute an operation with standardized error handling
         
@@ -104,7 +106,7 @@ class BaseDocumentProcessor:
             logger.error(f"{error_message}: {e}", exc_info=True)
             return None
             
-    def get_metadata_base(self, file_path, parser_name):
+    def get_metadata_base(self, file_path: str, parser_name: str) -> Dict[str, Any]:
         """
         Generate base metadata for a document
         

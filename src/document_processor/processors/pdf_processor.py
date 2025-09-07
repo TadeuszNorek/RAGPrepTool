@@ -5,6 +5,7 @@ import pymupdf4llm
 import re
 import gc
 import logging
+from typing import List, Tuple, Dict, Any, Optional
 from .base_processor import BaseDocumentProcessor
 from ..utils.image_utils import ImageProcessor
 
@@ -14,11 +15,11 @@ class PDFProcessor(BaseDocumentProcessor):
     """Processor for PDF documents"""
     
     @classmethod
-    def get_supported_extensions(cls):
+    def get_supported_extensions(cls) -> List[str]:
         """Return the file extensions supported by this processor"""
         return [".pdf"]
     
-    def can_process(self, file_path):
+    def can_process(self, file_path: str) -> bool:
         """PDF specific filtering"""
         if not super().can_process(file_path):
             return False
@@ -30,7 +31,7 @@ class PDFProcessor(BaseDocumentProcessor):
         
         return True
     
-    def process(self, file_path, output_dir, media_dir):
+    def process(self, file_path: str, output_dir: str, media_dir: str) -> Tuple[Optional[str], Dict[str, Any]]:
         """
         Process PDF document and convert to markdown
         
@@ -69,7 +70,7 @@ class PDFProcessor(BaseDocumentProcessor):
             # Clean up temporary files
             self._cleanup_temp_files(temp_images_dir)
     
-    def _extract_pdf_content(self, file_path, temp_images_dir):
+    def _extract_pdf_content(self, file_path: str, temp_images_dir: str) -> Tuple[Optional[str], Dict[str, Any], Dict[str, Any]]:
         """
         Extract content and metadata from PDF file
         
@@ -125,7 +126,7 @@ class PDFProcessor(BaseDocumentProcessor):
             logger.error(f"Failed to extract content from PDF {file_path}: {e}", exc_info=True)
             return None, {}, {"error": str(e), **self.get_metadata_base(file_path, "pdf_pymupdf4llm")}
     
-    def _cleanup_temp_files(self, directory):
+    def _cleanup_temp_files(self, directory: str) -> None:
         """
         Clean up temporary files safely
         

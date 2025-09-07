@@ -2,6 +2,7 @@
 import os
 import re
 import logging
+from typing import List, Tuple, Dict, Any, Optional
 from .base_processor import BaseDocumentProcessor
 from ..utils.pandoc_utils import PandocUtils
 
@@ -11,7 +12,7 @@ class PandocProcessor(BaseDocumentProcessor):
     """Processor for documents that can be converted via Pandoc"""
     
     @classmethod
-    def get_supported_extensions(cls):
+    def get_supported_extensions(cls) -> List[str]:
         """Return the file extensions supported by this processor"""
         # Pandoc handles many formats, but we'll list the most common ones
         # For a complete list, PandocUtils.is_supported_format() should be used
@@ -20,7 +21,7 @@ class PandocProcessor(BaseDocumentProcessor):
             ".html", ".htm", ".org", ".tex", ".wiki"
         ]
     
-    def process(self, file_path, output_dir, media_dir):
+    def process(self, file_path: str, output_dir: str, media_dir: str) -> Tuple[Optional[str], Dict[str, Any]]:
         """
         Process document using Pandoc
         

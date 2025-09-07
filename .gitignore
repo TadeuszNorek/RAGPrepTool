@@ -67,3 +67,5 @@ rag_env/
 *.njsproj
 *.sln
 *.sw?
+AGENTS.md
+GEMINI.md

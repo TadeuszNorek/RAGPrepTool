@@ -5,10 +5,11 @@ import gc
 import time
 import logging
 import json
+from typing import Dict, Any, Optional, Type
 
 logger = logging.getLogger(__name__)
 
-def safe_remove_directory(directory, max_attempts=3, delay=1):
+def safe_remove_directory(directory: str, max_attempts: int = 3, delay: int = 1) -> bool:
     """
     Safely remove a directory with multiple attempts
     
@@ -45,7 +46,7 @@ def safe_remove_directory(directory, max_attempts=3, delay=1):
 class TempDirectory:
     """Context manager for temporary directory handling"""
     
-    def __init__(self, path, auto_remove=True):
+    def __init__(self, path: str, auto_remove: bool = True) -> None:
         """
         Initialize temporary directory manager
         
@@ -56,12 +57,12 @@ class TempDirectory:
         self.path = path
         self.auto_remove = auto_remove
     
-    def __enter__(self):
+    def __enter__(self) -> str:
         """Create the directory and return its path"""
         os.makedirs(self.path, exist_ok=True)
         return self.path
     
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[Any]) -> None:
         """Clean up directory if auto_remove is True"""
         if self.auto_remove:
             safe_remove_directory(self.path)
@@ -70,7 +71,7 @@ class FileUtils:
     """Utility class for file operations"""
     
     @staticmethod
-    def cleanup_nested_media_folders(output_dir):
+    def cleanup_nested_media_folders(output_dir: str) -> None:
         """
         Clean up directory structure by handling nested media folders
         
@@ -120,7 +121,7 @@ class FileUtils:
             logger.warning(f"Failed to remove nested media folder: {e}")
     
     @staticmethod
-    def save_metadata(metadata, filepath):
+    def save_metadata(metadata: Dict[str, Any], filepath: str) -> bool:
         """Save metadata to JSON file"""
         try:
             with open(filepath, "w", encoding="utf-8") as f:
@@ -131,8 +132,8 @@ class FileUtils:
             return False
     
     @staticmethod
-    def create_zip_package(zip_filepath, markdown_filepath, markdown_arcname, 
-                         metadata_filepath=None, media_folder=None):
+    def create_zip_package(zip_filepath: str, markdown_filepath: str, markdown_arcname: str, 
+                         metadata_filepath: Optional[str] = None, media_folder: Optional[str] = None) -> bool:
         """
         Create a ZIP package with markdown, metadata, and media files
         
