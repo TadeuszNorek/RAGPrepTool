@@ -34,6 +34,7 @@ def resource_path(relative_path: str) -> str:
 
 
 class App(ctk.CTk):
+    """Main application class for the RAG Prep Tool GUI."""
     def __init__(self) -> None:
         super().__init__()
 
@@ -139,18 +140,25 @@ class App(ctk.CTk):
         self.converter: Optional[RAGConverter] = None
 
     def select_input_folder(self) -> None:
+        """Opens a dialog to select the input folder and updates the corresponding entry field."""
         folder_selected = filedialog.askdirectory()
         if folder_selected:
             self.input_folder_path_entry.delete(0, ctk.END)
             self.input_folder_path_entry.insert(0, folder_selected)
 
     def select_output_folder(self) -> None:
+        """Opens a dialog to select the output folder and updates the corresponding entry field."""
         folder_selected = filedialog.askdirectory()
         if folder_selected:
             self.output_folder_path_entry.delete(0, ctk.END)
             self.output_folder_path_entry.insert(0, folder_selected)
 
     def update_status(self, message: str) -> None:
+        """Updates the status label with the given message, changing color for external image notifications.
+
+        Args:
+            message (str): The status message to display.
+        """
         if "external image(s)" in message:
             self.status_label.configure(text=message, text_color="orange")
         else:
@@ -158,10 +166,20 @@ class App(ctk.CTk):
         self.update_idletasks()
 
     def update_progress(self, value: float) -> None:
+        """Updates the progress bar with the given value.
+
+        Args:
+            value (float): The progress value (0-100).
+        """
         self.progress_bar.set(value / 100.0)
         self.update_idletasks()
 
     def get_config(self) -> Optional[UIConfig]:
+        """Retrieves the current configuration settings from the UI elements.
+
+        Returns:
+            Optional[UIConfig]: A dictionary containing the configuration settings, or None if validation fails.
+        """
         try:
             small_kb = int(self.small_image_kb_entry.get()) if self.small_image_kb_entry.get() else 0
             decorative_px = int(self.decorative_px_entry.get()) if self.decorative_px_entry.get() else 0
@@ -185,6 +203,10 @@ class App(ctk.CTk):
         return config
 
     def start_conversion_thread(self) -> None:
+        """Initiates the conversion process in a separate thread to keep the UI responsive.
+
+        Performs input validation and handles Pandoc warnings if necessary.
+        """
         input_folder = self.input_folder_path_entry.get()
         output_base_folder = self.output_folder_path_entry.get().strip()
 
@@ -227,6 +249,13 @@ class App(ctk.CTk):
         thread.start()
 
     def run_conversion(self, input_folder: str, output_base_folder: str, output_suffix: str) -> None:
+        """Executes the document conversion process.
+
+        Args:
+            input_folder (str): The path to the input folder containing source files.
+            output_base_folder (str): The path to the output folder for ZIP archives.
+            output_suffix (str): The suffix to append to output filenames.
+        """
         try:
             if self.converter:
                 self.converter.process_folder(input_folder, output_base_folder, output_suffix)
