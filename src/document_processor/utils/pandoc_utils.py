@@ -88,7 +88,7 @@ class PandocUtils:
             options = {}
             
         output_md_file_abs = os.path.join(output_dir_for_md, md_filename_itself)
-        extra_args = ["--wrap=none", "--columns=1000", "--markdown-headings=atx", "--verbose", "--log=pandoc_log.txt"]
+        extra_args = ["--wrap=none", "--columns=1000", "--markdown-headings=atx", "--log=pandoc_log.txt"]
         markdown_format = "gfm"
         pandoc_media_output_subfolder_name = "media"
 

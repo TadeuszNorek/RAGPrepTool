@@ -12,8 +12,6 @@ from .utils.file_utils import FileUtils, TempDirectory, safe_remove_directory
 from .utils.pandoc_utils import PandocUtils
 
 logger = logging.getLogger(__name__)
-if not logger.hasHandlers():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 class RAGConverter:
     """Main converter class for document processing and packaging"""
