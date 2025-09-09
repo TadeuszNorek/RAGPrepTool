@@ -67,6 +67,7 @@ rag_env/
 *.njsproj
 *.sln
 *.sw?
+rag_prep_tool.code-workspace
 AGENTS.md
 GEMINI.md
 
