@@ -9,14 +9,14 @@ logger = logging.getLogger(__name__)
 class BaseDocumentProcessor:
     """Base class for document processors"""
     
-    def __init__(self, config: 'ConverterConfig') -> None:
+    def __init__(self, config: ConverterConfig) -> None:
         """
         Initialize document processor with configuration
         
         Args:
             config: Configuration object or dictionary
         """
-        self.config: 'ConverterConfig' = config
+        self.config: ConverterConfig = config
     
     @classmethod
     def get_supported_extensions(cls) -> List[str]:
@@ -25,7 +25,7 @@ class BaseDocumentProcessor:
         Override in subclasses to specify supported extensions.
         
         Returns:
-            list: List of supported file extensions (e.g., ['.pdf', '.txt'])
+            List[str]: List of supported file extensions (e.g., ['.pdf', '.txt'])
         """
         return []
     
@@ -41,7 +41,7 @@ class BaseDocumentProcessor:
             bool: True if this processor can handle the file, False otherwise
         """
         # Check if it's a common temp file
-        if cls._is_common_temp_file(cls, file_path):
+        if cls._is_common_temp_file(file_path):
             return False
         
         ext = os.path.splitext(file_path)[1].lower()
@@ -53,7 +53,7 @@ class BaseDocumentProcessor:
         filename = os.path.basename(file_path)
         
         # Microsoft Office temporary files (Excel, Word, PowerPoint)
-        if filename.startswith('~$'):
+        if filename.startswith('~'):
             logger.debug(f"Skipping Microsoft Office temp file: {filename}")
             return True
         

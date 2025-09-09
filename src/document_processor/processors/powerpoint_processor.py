@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class PowerPointProcessor(BaseDocumentProcessor):
     """Processor for PowerPoint (PPT/PPTX) files"""
     
-    def __init__(self, config: Optional[ConverterConfig] = None) -> None:
+    def __init__(self, config: ConverterConfig) -> None:
         super().__init__(config)
     
     @classmethod
@@ -24,12 +24,13 @@ class PowerPointProcessor(BaseDocumentProcessor):
         """Return the file extensions supported by this processor"""
         return [".pptx", ".ppt"]
     
-    def can_process(self, file_path: str) -> bool:
+    @classmethod
+    def can_process(cls, file_path: str) -> bool:
         """PowerPoint specific filtering"""
         # Base class already handles ~$ files
-        return super().can_process(file_path)
+        return super(PowerPointProcessor, cls).can_process(file_path)
     
-    def process(self, file_path: str, output_dir: str, media_dir: str) -> Tuple[str, Dict[str, Any]]:
+    def process(self, file_path: str, output_dir: str, media_dir: str) -> Tuple[Optional[str], Dict[str, Any]]:
         """
         Process PowerPoint file and convert to Markdown
         
@@ -66,7 +67,7 @@ class PowerPointProcessor(BaseDocumentProcessor):
         
         # Process PPTX files normally
         return self.process_powerpoint_file(file_path, media_dir)
-    def process_powerpoint_file(self, file_path: str, media_dir: str) -> Tuple[str, Dict[str, Any]]:
+    def process_powerpoint_file(self, file_path: str, media_dir: str) -> Tuple[Optional[str], Dict[str, Any]]:
         """
         Process PowerPoint (PPTX) files and convert to Markdown with images.
         
@@ -79,9 +80,10 @@ class PowerPointProcessor(BaseDocumentProcessor):
         """
         try:
             from pptx import Presentation
+            from pptx.enum.shapes import MSO_SHAPE_TYPE
         except ImportError:
             logger.error("python-pptx library not installed. Install with: pip install python-pptx")
-            return f"# Error Processing PowerPoint\n\nThe python-pptx library is required but not installed.\n\nPlease install with: pip install python-pptx", {
+            return None, {
                 'source_filename': os.path.basename(file_path),
                 'parser': 'pptx_parser',
                 'error': 'Missing dependency: python-pptx'
@@ -125,10 +127,14 @@ class PowerPointProcessor(BaseDocumentProcessor):
                 
                 # Process images in the slide
                 for shape in slide.shapes:
-                    if hasattr(shape, 'image') and shape.image:
-                        try:
+                    try:
+                        # Only Picture shapes have image data in python-pptx
+                        if getattr(shape, "shape_type", None) == MSO_SHAPE_TYPE.PICTURE:
+                            img = getattr(shape, "image", None)
+                            if not img:
+                                continue
                             # Extract image data
-                            image_bytes = shape.image.blob
+                            image_bytes = img.blob
                             
                             # Generate a unique filename
                             image_hash = hashlib.md5(image_bytes).hexdigest()[:12]
@@ -141,13 +147,16 @@ class PowerPointProcessor(BaseDocumentProcessor):
                                 img_file.write(image_bytes)
                             
                             # Add image reference to markdown
-                            alt_text = shape.alt_text if hasattr(shape, 'alt_text') else f"Slide {slide_index} Image {image_count}"
+                            alt_text = (
+                                getattr(shape, 'alt_text', None)
+                                or getattr(shape, 'name', None)
+                                or f"Slide {slide_index} Image {image_count}"
+                            )
                             md_content.append(f"\n![{alt_text}](media/{image_filename})\n")
                             
                             image_count += 1
-                            
-                        except Exception as e:
-                            logger.warning(f"Failed to process image in slide {slide_index}: {e}")
+                    except Exception as e:
+                        logger.warning(f"Failed to process image in slide {slide_index}: {e}")
                 
                 # Add slide notes if any
                 notes_text = self.extract_slide_notes(slide)
@@ -167,7 +176,7 @@ class PowerPointProcessor(BaseDocumentProcessor):
             
         except Exception as e:
             logger.error(f"Error processing PowerPoint file {file_path}: {e}", exc_info=True)
-            return f"# Error Processing PowerPoint\n\nFailed to process {os.path.basename(file_path)}.\n\nError: {str(e)}", {
+            return None, {
                 'source_filename': os.path.basename(file_path),
                 'parser': 'pptx_parser',
                 'error': str(e)
@@ -246,15 +255,19 @@ class PowerPointProcessor(BaseDocumentProcessor):
 
     def get_image_extension(self, image_bytes: bytes) -> Optional[str]:
         """Determine file extension based on image data"""
+        # Try using Pillow for robust format detection (compatible with Python 3.13+)
         try:
-            # Try using imghdr first if available
-            import imghdr
-            ext = imghdr.what(None, image_bytes)
-            if ext:
-                return f".{ext}"
-        except ImportError:
-            # This should rarely happen as imghdr is part of Python standard library
-            logger.warning("imghdr module not available for image type detection - using fallback method")
+            from io import BytesIO
+            from PIL import Image
+            with Image.open(BytesIO(image_bytes)) as img:
+                fmt = (img.format or '').lower()
+                if fmt == 'jpeg':
+                    return '.jpg'
+                if fmt:
+                    return f'.{fmt}'
+        except Exception:
+            # Fall back to magic byte checks below
+            pass
     
         # Fallback: Check magic bytes manually for common formats
         if image_bytes.startswith(b'\xFF\xD8'):

@@ -24,12 +24,9 @@ logger = logging.getLogger(__name__)
 
 
 def resource_path(relative_path: str) -> str:
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(os.path.dirname(__file__))
+    """Get absolute path to resource, works for dev and for PyInstaller."""
+    # PyInstaller creates a temp folder and stores path in _MEIPASS
+    base_path = getattr(sys, "_MEIPASS", os.path.abspath(os.path.dirname(__file__)))
     return os.path.join(base_path, relative_path)
 
 
@@ -242,7 +239,9 @@ class App(ctk.CTk):
         self.convert_button.configure(state="disabled")
         self.status_label.configure(text="Starting conversion...")
         self.progress_bar.set(0)
-        self.converter = RAGConverter(config, status_callback=self.update_status, progress_callback=self.update_progress)
+        # RAGConverter expects Dict[str, Any] or ConverterConfig; coerce TypedDict to Dict for type checkers
+        config_dict: Dict[str, Any] = dict(config)
+        self.converter = RAGConverter(config_dict, status_callback=self.update_status, progress_callback=self.update_progress)
 
         thread = threading.Thread(target=self.run_conversion, args=(input_folder, output_base_folder, output_suffix))
         thread.daemon = True

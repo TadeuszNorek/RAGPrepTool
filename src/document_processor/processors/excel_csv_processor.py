@@ -5,6 +5,7 @@ Converts Excel and CSV files to Markdown format with tables.
 """
 
 import os
+import math
 import logging
 from typing import List, Tuple, Dict, Any, Optional
 from ..config import ConverterConfig
@@ -15,10 +16,10 @@ logger = logging.getLogger(__name__)
 class ExcelCsvProcessor(BaseDocumentProcessor):
     """Processor for Excel and CSV files"""
     
-    def __init__(self, config: Optional[ConverterConfig] = None) -> None:
+    def __init__(self, config: ConverterConfig) -> None:
         super().__init__(config)
-        self.max_rows_display = config.get('max_rows_display', 1000) if config else 1000
-        self.max_columns_display = config.get('max_columns_display', 50) if config else 50
+        self.max_rows_display = self.config.get('max_rows_display', 1000)
+        self.max_columns_display = self.config.get('max_columns_display', 50)
     
     @classmethod
     def get_supported_extensions(cls) -> List[str]:
@@ -41,7 +42,7 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         ext = os.path.splitext(file_path)[1].lower()
         return ext in cls.get_supported_extensions()
 
-    def process(self, file_path: str, output_dir: str, media_dir: str) -> Tuple[str, Dict[str, Any]]:
+    def process(self, file_path: str, output_dir: str, media_dir: str) -> Tuple[Optional[str], Dict[str, Any]]:
         """
         Process Excel/CSV file and convert to Markdown
         
@@ -57,7 +58,7 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
             import pandas as pd
         except ImportError:
             logger.error("pandas library not installed. Install with: pip install pandas")
-            return f"# Error Processing Spreadsheet\n\nThe pandas library is required but not installed.\n\nPlease install with: pip install pandas", {
+            return None, {
                 'source_filename': os.path.basename(file_path),
                 'parser': 'excel_csv_parser',
                 'error': 'Missing dependency: pandas'
@@ -75,7 +76,7 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
             elif ext in [".xlsx", ".xls"]:
                 return self._process_excel_file(file_path, pd)
             else:
-                return f"# Unsupported Format\n\nFile format {ext} is not supported.", {
+                return None, {
                     'source_filename': os.path.basename(file_path),
                     'parser': 'excel_csv_parser',
                     'error': f'Unsupported format: {ext}'
@@ -83,7 +84,7 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
                 
         except Exception as e:
             logger.error(f"Error processing spreadsheet file {file_path}: {e}", exc_info=True)
-            return f"# Error Processing Spreadsheet\n\nFailed to process {os.path.basename(file_path)}.\n\nError: {str(e)}", {
+            return None, {
                 'source_filename': os.path.basename(file_path),
                 'parser': 'excel_csv_parser',
                 'error': str(e)
@@ -286,7 +287,12 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         for _, row in df.iterrows():
             row_data = []
             for i, (col, cell) in enumerate(zip(headers, row)):
-                if cell is None or pd.isna(cell):
+                # Avoid pandas dependency here; handle common empty/NaN cases
+                if (
+                    cell is None
+                    or (isinstance(cell, float) and math.isnan(cell))
+                    or str(cell).strip().lower() in ['nan', 'none', 'null']
+                ):
                     row_data.append("")
                 else:
                     cell_str = str(cell)

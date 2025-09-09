@@ -69,3 +69,7 @@ rag_env/
 *.sw?
 AGENTS.md
 GEMINI.md
+
+# Testing files
+input/
+rag_prep_tool.log
