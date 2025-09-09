@@ -5,7 +5,10 @@ Converts Excel and CSV files to Markdown format with tables.
 """
 
 import os
+import math
 import logging
+from typing import List, Tuple, Dict, Any, Optional
+from ..config import ConverterConfig
 from .base_processor import BaseDocumentProcessor
 
 logger = logging.getLogger(__name__)
@@ -13,18 +16,18 @@ logger = logging.getLogger(__name__)
 class ExcelCsvProcessor(BaseDocumentProcessor):
     """Processor for Excel and CSV files"""
     
-    def __init__(self, config=None):
+    def __init__(self, config: ConverterConfig) -> None:
         super().__init__(config)
-        self.max_rows_display = config.get('max_rows_display', 1000) if config else 1000
-        self.max_columns_display = config.get('max_columns_display', 50) if config else 50
+        self.max_rows_display = self.config.get('max_rows_display', 1000)
+        self.max_columns_display = self.config.get('max_columns_display', 50)
     
     @classmethod
-    def get_supported_extensions(cls):
+    def get_supported_extensions(cls) -> List[str]:
         """Return the file extensions supported by this processor"""
         return [".csv", ".xlsx", ".xls", ".tsv"]
     
     @classmethod
-    def can_process(cls, file_path):
+    def can_process(cls, file_path: str) -> bool:
         """Check if this processor can handle the file"""
         if not super().can_process(file_path):
             return False
@@ -39,7 +42,7 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         ext = os.path.splitext(file_path)[1].lower()
         return ext in cls.get_supported_extensions()
 
-    def process(self, file_path, output_dir, media_dir):
+    def process(self, file_path: str, output_dir: str, media_dir: str) -> Tuple[Optional[str], Dict[str, Any]]:
         """
         Process Excel/CSV file and convert to Markdown
         
@@ -55,7 +58,7 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
             import pandas as pd
         except ImportError:
             logger.error("pandas library not installed. Install with: pip install pandas")
-            return f"# Error Processing Spreadsheet\n\nThe pandas library is required but not installed.\n\nPlease install with: pip install pandas", {
+            return None, {
                 'source_filename': os.path.basename(file_path),
                 'parser': 'excel_csv_parser',
                 'error': 'Missing dependency: pandas'
@@ -73,7 +76,7 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
             elif ext in [".xlsx", ".xls"]:
                 return self._process_excel_file(file_path, pd)
             else:
-                return f"# Unsupported Format\n\nFile format {ext} is not supported.", {
+                return None, {
                     'source_filename': os.path.basename(file_path),
                     'parser': 'excel_csv_parser',
                     'error': f'Unsupported format: {ext}'
@@ -81,14 +84,22 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
                 
         except Exception as e:
             logger.error(f"Error processing spreadsheet file {file_path}: {e}", exc_info=True)
-            return f"# Error Processing Spreadsheet\n\nFailed to process {os.path.basename(file_path)}.\n\nError: {str(e)}", {
+            return None, {
                 'source_filename': os.path.basename(file_path),
                 'parser': 'excel_csv_parser',
                 'error': str(e)
             }
 
-    def _process_csv_file(self, file_path, pd):
-        """Process CSV file with intelligent separator detection and special bundle handling"""
+    def _process_csv_file(self, file_path: str, pd: Any) -> Tuple[str, Dict[str, Any]]:
+        """Process CSV file with intelligent separator detection and special bundle handling.
+
+        Args:
+            file_path (str): Path to the CSV file.
+            pd (Any): The pandas module.
+
+        Returns:
+            Tuple[str, Dict[str, Any]]: A tuple containing the markdown content and metadata.
+        """
         filename = os.path.basename(file_path)
         
         # Check if this is a bundle translation file
@@ -99,8 +110,15 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         # Continue with regular CSV processing for non-bundle files
         return self._process_regular_csv_file(file_path, pd)
 
-    def _is_bundle_file(self, file_path):
-        """Check if this is a bundle translation file"""
+    def _is_bundle_file(self, file_path: str) -> bool:
+        """Checks if the given file is a bundle translation file.
+
+        Args:
+            file_path (str): Path to the file.
+
+        Returns:
+            bool: True if it's a bundle file, False otherwise.
+        """
         try:
             # Read first line to check if it starts with bundle,"key"
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -115,8 +133,16 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
             except Exception:
                 return False
 
-    def _process_bundle_file(self, file_path, pd):
-        """Process bundle translation files with special handling"""
+    def _process_bundle_file(self, file_path: str, pd: Any) -> Tuple[str, Dict[str, Any]]:
+        """Processes bundle translation files with special handling.
+
+        Args:
+            file_path (str): Path to the bundle file.
+            pd (Any): The pandas module.
+
+        Returns:
+            Tuple[str, Dict[str, Any]]: A tuple containing the markdown content and metadata.
+        """
         filename = os.path.basename(file_path)
         
         # Try different encodings for bundle files
@@ -221,8 +247,15 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         
         return "\n".join(md_content), metadata
 
-    def _format_bundle_table(self, df):
-        """Format bundle data as a nice markdown table"""
+    def _format_bundle_table(self, df: Any) -> str:
+        """Formats bundle data as a markdown table.
+
+        Args:
+            df (Any): The pandas DataFrame containing bundle data.
+
+        Returns:
+            str: The formatted markdown table.
+        """
         try:
             # Use pandas to_markdown with bundle-specific formatting
             return df.to_markdown(index=False, tablefmt="github")
@@ -230,8 +263,15 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
             # Fallback to manual table creation
             return self._create_bundle_table_fallback(df)
 
-    def _create_bundle_table_fallback(self, df):
-        """Create bundle table manually when tabulate is not available"""
+    def _create_bundle_table_fallback(self, df: Any) -> str:
+        """Creates a bundle table manually when tabulate is not available.
+
+        Args:
+            df (Any): The pandas DataFrame containing bundle data.
+
+        Returns:
+            str: The manually created markdown table.
+        """
         if df.empty:
             return "*No translation data to display*"
         
@@ -247,7 +287,12 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         for _, row in df.iterrows():
             row_data = []
             for i, (col, cell) in enumerate(zip(headers, row)):
-                if cell is None or pd.isna(cell):
+                # Avoid pandas dependency here; handle common empty/NaN cases
+                if (
+                    cell is None
+                    or (isinstance(cell, float) and math.isnan(cell))
+                    or str(cell).strip().lower() in ['nan', 'none', 'null']
+                ):
                     row_data.append("")
                 else:
                     cell_str = str(cell)
@@ -269,8 +314,16 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         table_parts = [header_row, separator_row] + data_rows
         return "\n".join(table_parts)
 
-    def _process_regular_csv_file(self, file_path, pd):
-        """Process regular CSV files (non-bundle files)"""
+    def _process_regular_csv_file(self, file_path: str, pd: Any) -> Tuple[str, Dict[str, Any]]:
+        """Processes regular CSV files (non-bundle files).
+
+        Args:
+            file_path (str): Path to the CSV file.
+            pd (Any): The pandas module.
+
+        Returns:
+            Tuple[str, Dict[str, Any]]: A tuple containing the markdown content and metadata.
+        """
         filename = os.path.basename(file_path)
         
         # Try different encodings and separators
@@ -450,8 +503,18 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         
         return "\n".join(md_content), metadata
 
-    def _score_csv_parsing(self, df, separator, file_path, encoding):
-        """Score the quality of CSV parsing to choose the best separator"""
+    def _score_csv_parsing(self, df: Any, separator: str, file_path: str, encoding: str) -> int:
+        """Scores the quality of CSV parsing to choose the best separator.
+
+        Args:
+            df (Any): The pandas DataFrame.
+            separator (str): The separator used.
+            file_path (str): Path to the file.
+            encoding (str): The encoding used.
+
+        Returns:
+            int: The score indicating parsing quality.
+        """
         if df.empty:
             return 0
         
@@ -534,8 +597,16 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         
         return max(0, score)  # Ensure non-negative score
 
-    def _process_tsv_file(self, file_path, pd):
-        """Process TSV file (Tab-Separated Values)"""
+    def _process_tsv_file(self, file_path: str, pd: Any) -> Tuple[str, Dict[str, Any]]:
+        """Processes TSV file (Tab-Separated Values).
+
+        Args:
+            file_path (str): Path to the TSV file.
+            pd (Any): The pandas module.
+
+        Returns:
+            Tuple[str, Dict[str, Any]]: A tuple containing the markdown content and metadata.
+        """
         filename = os.path.basename(file_path)
         
         try:
@@ -561,8 +632,16 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         logger.info(f"Processing TSV dataframe with {len(df)} rows and {len(df.columns)} columns")
         return self._process_dataframe(df, filename, 'TSV', metadata_type='pandas_tsv')
 
-    def _process_excel_file(self, file_path, pd):
-        """Process Excel file (XLS/XLSX)"""
+    def _process_excel_file(self, file_path: str, pd: Any) -> Tuple[str, Dict[str, Any]]:
+        """Processes Excel file (XLS/XLSX).
+
+        Args:
+            file_path (str): Path to the Excel file.
+            pd (Any): The pandas module.
+
+        Returns:
+            Tuple[str, Dict[str, Any]]: A tuple containing the markdown content and metadata.
+        """
         filename = os.path.basename(file_path)
         
         try:
@@ -650,8 +729,18 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
             logger.error(f"Error processing Excel file: {e}")
             raise
     
-    def _process_dataframe(self, df, filename, file_type, metadata_type):
-        """Common processing logic for dataframes"""
+    def _process_dataframe(self, df: Any, filename: str, file_type: str, metadata_type: str) -> Tuple[str, Dict[str, Any]]:
+        """Common processing logic for dataframes.
+
+        Args:
+            df (Any): The pandas DataFrame.
+            filename (str): The original filename.
+            file_type (str): The type of file (e.g., 'CSV', 'TSV').
+            metadata_type (str): The parser name for metadata.
+
+        Returns:
+            Tuple[str, Dict[str, Any]]: A tuple containing the markdown content and metadata.
+        """
         logger.info(f"Processing {file_type} dataframe for {filename}")
         original_rows = len(df)
         original_cols = len(df.columns)
@@ -702,8 +791,15 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         
         return "\n".join(md_content), metadata
     
-    def _clean_column_name(self, col_name):
-        """Clean column names for better markdown display"""
+    def _clean_column_name(self, col_name: Any) -> str:
+        """Cleans column names for better markdown display.
+
+        Args:
+            col_name (Any): The original column name.
+
+        Returns:
+            str: The cleaned column name.
+        """
         # Check for None, NaN, or empty values without using pandas
         if col_name is None or str(col_name).strip() in ['', 'nan', 'NaN', 'None']:
             return 'Unnamed_Column'
@@ -720,8 +816,15 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         
         return clean_name
     
-    def _sanitize_dataframe_for_conversion(self, df):
-        """Prepare dataframe for LLM-friendly markdown conversion"""
+    def _sanitize_dataframe_for_conversion(self, df: Any) -> Any:
+        """Prepares a dataframe for LLM-friendly markdown conversion.
+
+        Args:
+            df (Any): The pandas DataFrame.
+
+        Returns:
+            Any: The sanitized DataFrame.
+        """
         # Create a copy to avoid modifying original data
         df_cleaned = df.copy()
         # Replace NaN values with empty strings for better LLM interpretation
@@ -733,8 +836,15 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         
         return df_cleaned
 
-    def _clean_cell_content(self, cell_value):
-        """Clean individual cell content for markdown table compatibility"""
+    def _clean_cell_content(self, cell_value: Any) -> str:
+        """Cleans individual cell content for markdown table compatibility.
+
+        Args:
+            cell_value (Any): The original cell value.
+
+        Returns:
+            str: The cleaned cell content.
+        """
         if (cell_value is None or 
             cell_value == '' or 
             str(cell_value).strip() == '' or
@@ -764,8 +874,15 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
         
         return content.strip()    
     
-    def _dataframe_to_markdown(self, df):
-        """Convert dataframe to markdown table with LLM-friendly formatting"""
+    def _dataframe_to_markdown(self, df: Any) -> str:
+        """Converts a dataframe to a markdown table with LLM-friendly formatting.
+
+        Args:
+            df (Any): The pandas DataFrame.
+
+        Returns:
+            str: The markdown table string.
+        """
         # Clean the dataframe first
         df_clean = self._sanitize_dataframe_for_conversion(df)
         
@@ -776,8 +893,15 @@ class ExcelCsvProcessor(BaseDocumentProcessor):
             logger.warning("tabulate library not available, using fallback markdown table generation")
             return self._create_markdown_table_fallback(df_clean)
 
-    def _create_markdown_table_fallback(self, df):
-        """Create markdown table manually when tabulate is not available"""
+    def _create_markdown_table_fallback(self, df: Any) -> str:
+        """Creates a markdown table manually when tabulate is not available.
+
+        Args:
+            df (Any): The pandas DataFrame.
+
+        Returns:
+            str: The manually created markdown table string.
+        """
         if df.empty:
             return "*No data to display*"
         

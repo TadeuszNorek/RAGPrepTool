@@ -2,6 +2,7 @@
 import os
 import json
 import logging
+from typing import List, Tuple, Dict, Any, Optional, Callable
 from .base_processor import BaseDocumentProcessor
 
 logger = logging.getLogger(__name__)
@@ -13,12 +14,12 @@ class SimpleProcessor(BaseDocumentProcessor):
     """
     
     @classmethod
-    def get_supported_extensions(cls):
+    def get_supported_extensions(cls) -> List[str]:
         """Return the file extensions supported by this processor"""
         return list(cls.FILE_TYPES.keys())
     
     # File type configurations
-    FILE_TYPES = {
+    FILE_TYPES: Dict[str, Dict[str, Any]] = {
         # Plain text
         ".txt": {
             "parser_name": "txt_simple",
@@ -40,7 +41,7 @@ class SimpleProcessor(BaseDocumentProcessor):
         } for ext in [".py", ".js", ".java", ".cs", ".c", ".cpp", ".go", ".rb", ".php", ".rs", ".kt", ".swift"]}
     }
     
-    def process(self, file_path, output_dir, media_dir):
+    def process(self, file_path: str, output_dir: str, media_dir: str) -> Tuple[Optional[str], Dict[str, Any]]:
         """
         Process simple file types using a unified approach
         

@@ -3,7 +3,7 @@ customtkinter~=5.2.0
 
 # For PDF processing (core)
 pymupdf4llm~=0.0.24
-PyMuPDF~=1.23.0 # Or the version specifically required by your pymupdf4llm
+PyMuPDF>=1.24,<1.26 # Or the version specifically required by your pymupdf4llm
 
 # For Image manipulation
 Pillow~=10.0

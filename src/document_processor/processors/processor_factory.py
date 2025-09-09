@@ -1,5 +1,8 @@
 #!filepath document_processor/processors/processor_factory.py
 import os
+from typing import List, Dict, Type, Optional, Any
+from .base_processor import BaseDocumentProcessor
+from ..config import ConverterConfig
 from .pdf_processor import PDFProcessor
 from .markdown_processor import MarkdownProcessor
 from .simple_processor import SimpleProcessor
@@ -12,7 +15,7 @@ class DocumentProcessorFactory:
     """Factory for creating document processors based on file type"""
     
     # Registry of processor classes
-    _processor_classes = [
+    _processor_classes: List[Type[BaseDocumentProcessor]] = [
         PDFProcessor,
         MarkdownProcessor,
         PowerPointProcessor,
@@ -22,7 +25,7 @@ class DocumentProcessorFactory:
     ]
     
     @classmethod
-    def get_all_supported_extensions(cls):
+    def get_all_supported_extensions(cls) -> Dict[str, Type[BaseDocumentProcessor]]:
         """
         Collect all supported extensions from registered processors
         
@@ -39,7 +42,7 @@ class DocumentProcessorFactory:
         return extensions_map
     
     @classmethod
-    def can_process(cls, file_path):
+    def can_process(cls, file_path: str) -> bool:
         """
         Check if this factory can create a processor for the given file
         
@@ -66,7 +69,7 @@ class DocumentProcessorFactory:
         return False
         
     @classmethod
-    def create_processor(cls, file_path, config):
+    def create_processor(cls, file_path: str, config: ConverterConfig) -> BaseDocumentProcessor:
         """
         Create appropriate document processor based on file extension
         
@@ -95,7 +98,7 @@ class DocumentProcessorFactory:
         return SimpleProcessor(config)
         
     @classmethod
-    def register_processor(cls, processor_class):
+    def register_processor(cls, processor_class: Type[BaseDocumentProcessor]) -> None:
         """
         Register a new processor class with the factory
         

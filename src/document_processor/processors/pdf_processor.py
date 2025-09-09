@@ -2,9 +2,11 @@
 import os
 import fitz
 import pymupdf4llm
-import re
 import gc
 import logging
+import shutil
+import time
+from typing import List, Tuple, Dict, Any, Optional
 from .base_processor import BaseDocumentProcessor
 from ..utils.image_utils import ImageProcessor
 
@@ -14,11 +16,12 @@ class PDFProcessor(BaseDocumentProcessor):
     """Processor for PDF documents"""
     
     @classmethod
-    def get_supported_extensions(cls):
+    def get_supported_extensions(cls) -> List[str]:
         """Return the file extensions supported by this processor"""
         return [".pdf"]
     
-    def can_process(self, file_path):
+    @classmethod
+    def can_process(cls, file_path: str) -> bool:
         """PDF specific filtering"""
         if not super().can_process(file_path):
             return False
@@ -30,7 +33,7 @@ class PDFProcessor(BaseDocumentProcessor):
         
         return True
     
-    def process(self, file_path, output_dir, media_dir):
+    def process(self, file_path: str, output_dir: str, media_dir: str) -> Tuple[Optional[str], Dict[str, Any]]:
         """
         Process PDF document and convert to markdown
         
@@ -56,7 +59,7 @@ class PDFProcessor(BaseDocumentProcessor):
                 return None, {"error": "Failed to extract PDF content", **self.get_metadata_base(file_path, "pdf_pymupdf4llm")}
             
             # Process extracted images and update markdown
-            image_processor = ImageProcessor(self.config)
+            image_processor = ImageProcessor(self.config.to_dict())
             processed_images_info = image_processor.process_pdf_images(raw_images, media_dir)
             md_content = image_processor.update_markdown_with_processed_images(md_content, processed_images_info)
             
@@ -69,7 +72,7 @@ class PDFProcessor(BaseDocumentProcessor):
             # Clean up temporary files
             self._cleanup_temp_files(temp_images_dir)
     
-    def _extract_pdf_content(self, file_path, temp_images_dir):
+    def _extract_pdf_content(self, file_path: str, temp_images_dir: str) -> Tuple[Optional[str], Dict[str, Any], Dict[str, Any]]:
         """
         Extract content and metadata from PDF file
         
@@ -83,7 +86,7 @@ class PDFProcessor(BaseDocumentProcessor):
         raw_images = {}
         
         try:
-            doc = fitz.open(file_path)
+            doc: Any = fitz.open(file_path)
             try:
                 # Extract metadata
                 metadata = {k: str(v) if not isinstance(v, (str, int, float, bool, type(None))) else v 
@@ -117,7 +120,8 @@ class PDFProcessor(BaseDocumentProcessor):
                         logger.warning(f"Could not read raw PDF image {img_path}: {e}")
             
             # Apply minor text fixes
-            md_content = md_content.replace(' " **;**', '"**;**')
+            if md_content:
+                md_content = md_content.replace(' \" **;**', '"**;**')
             
             return md_content, raw_images, metadata
             
@@ -125,7 +129,7 @@ class PDFProcessor(BaseDocumentProcessor):
             logger.error(f"Failed to extract content from PDF {file_path}: {e}", exc_info=True)
             return None, {}, {"error": str(e), **self.get_metadata_base(file_path, "pdf_pymupdf4llm")}
     
-    def _cleanup_temp_files(self, directory):
+    def _cleanup_temp_files(self, directory: str) -> None:
         """
         Clean up temporary files safely
         
@@ -144,10 +148,8 @@ class PDFProcessor(BaseDocumentProcessor):
             try:
                 # Small delay to allow resources to be released
                 if attempt > 0:
-                    import time
                     time.sleep(1)
                     
-                import shutil
                 shutil.rmtree(directory)
                 logger.info(f"Removed temporary directory: {directory}")
                 break

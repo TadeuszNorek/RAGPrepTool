@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import logging
+from typing import List, Tuple, Dict, Any, Optional
 from .base_processor import BaseDocumentProcessor
 
 logger = logging.getLogger(__name__)
@@ -11,11 +12,11 @@ class MarkdownProcessor(BaseDocumentProcessor):
     """Processor for Markdown documents"""
     
     @classmethod
-    def get_supported_extensions(cls):
+    def get_supported_extensions(cls) -> List[str]:
         """Return the file extensions supported by this processor"""
         return [".md", ".markdown"]
     
-    def process(self, file_path, output_dir, media_dir):
+    def process(self, file_path: str, output_dir: str, media_dir: str) -> Tuple[Optional[str], Dict[str, Any]]:
         """
         Process Markdown document, handling local images
         
@@ -46,7 +47,7 @@ class MarkdownProcessor(BaseDocumentProcessor):
             logger.error(f"Error processing Markdown file {file_path}: {e}", exc_info=True)
             return None, {"error": str(e), **self.get_metadata_base(file_path, "md_custom")}
             
-    def _process_local_images(self, file_path, md_content, media_dir):
+    def _process_local_images(self, file_path: str, md_content: str, media_dir: str) -> str:
         """
         Process local images referenced in markdown file
         

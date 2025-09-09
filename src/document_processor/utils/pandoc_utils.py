@@ -3,19 +3,20 @@ import os
 import re
 import logging
 import pypandoc
+from typing import List, Dict, Any, Optional, Callable
 
 logger = logging.getLogger(__name__)
 
 class PandocUtils:
     """Utilities for Pandoc operations"""
     
-    _pandoc_installed = None
-    last_file_had_external_images = False
-    last_file_external_image_count = 0
-    status_callback = None
+    _pandoc_installed: Optional[bool] = None
+    last_file_had_external_images: bool = False
+    last_file_external_image_count: int = 0
+    status_callback: Optional[Callable[[str], None]] = None
     
     @classmethod
-    def check_installed_locally(cls):
+    def check_installed_locally(cls) -> bool:
         """Checks if Pandoc is installed and accessible via pypandoc."""
         if cls._pandoc_installed is not None:
             return cls._pandoc_installed
@@ -30,7 +31,7 @@ class PandocUtils:
         return cls._pandoc_installed
 
     @classmethod
-    def is_supported_format(cls, file_path):
+    def is_supported_format(cls, file_path: str) -> bool:
         """Checks if the file format is generally supported by Pandoc for conversion to Markdown."""
         if not cls.check_installed_locally():
             return False
@@ -44,14 +45,14 @@ class PandocUtils:
         return ext in supported_by_pandoc_for_us
     
     @staticmethod
-    def fix_table_captions(content):
+    def fix_table_captions(content: str) -> str:
         """Applies specific regex fix for table captions from Pandoc output."""
         pattern = r'(\n\n): \[\]\{.*?\}(Tabela[^\n]+)'
         replacement = r'\n\n**\2**'
         return re.sub(pattern, replacement, content)
     
     @staticmethod
-    def fix_md_media_paths(md_file_path):
+    def fix_md_media_paths(md_file_path: str) -> None:
         """Fix any incorrect media paths in the final markdown file"""
         try:
             with open(md_file_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -68,7 +69,7 @@ class PandocUtils:
             logger.warning(f"Failed to fix media paths in markdown: {e}")
     
     @classmethod
-    def convert_file(cls, input_file, output_dir_for_md, md_filename_itself, options=None):
+    def convert_file(cls, input_file: str, output_dir_for_md: str, md_filename_itself: str, options: Optional[Dict[str, Any]] = None) -> Optional[str]:
         """
         Converts a file to Markdown using Pandoc.
         
@@ -87,7 +88,7 @@ class PandocUtils:
             options = {}
             
         output_md_file_abs = os.path.join(output_dir_for_md, md_filename_itself)
-        extra_args = ["--wrap=none", "--columns=1000", "--markdown-headings=atx", "--verbose", "--log=pandoc_log.txt"]
+        extra_args = ["--wrap=none", "--columns=1000", "--markdown-headings=atx", "--log=pandoc_log.txt"]
         markdown_format = "gfm"
         pandoc_media_output_subfolder_name = "media"
 
@@ -153,7 +154,7 @@ class PandocUtils:
                     pass
             return None
     @classmethod
-    def _predownload_external_images(cls, input_file, media_dir, options=None):
+    def _predownload_external_images(cls, input_file: str, media_dir: str, options: Optional[Dict[str, Any]] = None) -> str:
         """Pre-download external images in HTML files and replace URLs with local paths."""
         # Only process HTML files
         if not input_file.lower().endswith(('.html', '.htm')):
@@ -256,7 +257,7 @@ class PandocUtils:
             logger.warning(f"Image pre-download process failed: {e}", exc_info=True)
             return input_file
     @staticmethod
-    def _download_images_parallel(image_urls, media_dir, max_workers=5, timeout=90):
+    def _download_images_parallel(image_urls: List[str], media_dir: str, max_workers: int = 5, timeout: int = 90) -> Dict[str, str]:
         """
         Download multiple images in parallel with timeout controls.
         

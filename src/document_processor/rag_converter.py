@@ -5,19 +5,20 @@ import logging
 import re
 import gc
 import time
+from typing import Callable, Optional, List, Union, Dict, Any
 from .config import ConverterConfig
 from .processors.processor_factory import DocumentProcessorFactory
 from .utils.file_utils import FileUtils, TempDirectory, safe_remove_directory
 from .utils.pandoc_utils import PandocUtils
 
 logger = logging.getLogger(__name__)
-if not logger.hasHandlers():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 class RAGConverter:
     """Main converter class for document processing and packaging"""
     
-    def __init__(self, config, status_callback=None, progress_callback=None):
+    def __init__(self, config: Union[Dict[str, Any], ConverterConfig], 
+                 status_callback: Optional[Callable[[str], None]] = None, 
+                 progress_callback: Optional[Callable[[float], None]] = None) -> None:
         """
         Initialize the RAG converter
         
@@ -35,19 +36,19 @@ class RAGConverter:
         
         logger.info(f"RAGConverter initialized. Pandoc available: {PandocUtils.check_installed_locally()}")
     
-    def _update_status(self, message):
+    def _update_status(self, message: str) -> None:
         """Update status via callback if available"""
         if self.status_callback:
             self.status_callback(message)
     
-    def _update_progress(self, value):
+    def _update_progress(self, value: float) -> None:
         """Update progress via callback if available"""
         if self.progress_callback:
             self.progress_callback(value)
     
-    def process_file_and_package(self, file_path, temp_extraction_dir, 
-                               common_media_dir, md_filename_in_zip, 
-                               zip_filepath_abs):
+    def process_file_and_package(self, file_path: str, temp_extraction_dir: str, 
+                               common_media_dir: str, md_filename_in_zip: str, 
+                               zip_filepath_abs: str) -> bool:
         """
         Process a single file and package results into a ZIP
         
@@ -99,7 +100,7 @@ class RAGConverter:
             common_media_dir
         )
 
-    def process_folder(self, input_folder_path, output_base_path, output_filename_suffix=""):
+    def process_folder(self, input_folder_path: str, output_base_path: str, output_filename_suffix: str = "") -> None:
         """
         Process all supported files in a folder
         
@@ -166,7 +167,7 @@ class RAGConverter:
         self._cleanup_remaining_temp_dirs(output_base_path)
         self._update_status("Batch processing complete.")
     
-    def _find_supported_files(self, folder_path):
+    def _find_supported_files(self, folder_path: str) -> List[str]:
         """Find all supported files in folder"""
         files_to_process = []
         
@@ -196,7 +197,7 @@ class RAGConverter:
         
         return files_to_process
     
-    def _cleanup_remaining_temp_dirs(self, output_path):
+    def _cleanup_remaining_temp_dirs(self, output_path: str) -> None:
         """Clean up any remaining temporary directories"""
         try:
             temp_dirs = [
@@ -210,7 +211,7 @@ class RAGConverter:
         except Exception as e:
             logger.warning(f"Error during final cleanup: {e}")
     
-    def cleanup_temp_files(self, directory):
+    def cleanup_temp_files(self, directory: str) -> None:
         """Clean up temporary files at application shutdown"""
         gc.collect()  # Force garbage collection
         
