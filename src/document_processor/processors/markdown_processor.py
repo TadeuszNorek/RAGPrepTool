@@ -62,25 +62,46 @@ class MarkdownProcessor(BaseDocumentProcessor):
         os.makedirs(media_dir, exist_ok=True)
         updated_links = {}
         
-        # Find all image references in markdown
+        # Collect image references from Markdown syntax and HTML <img> tags
+        img_refs = []
+
+        # Markdown image syntax
         for match in re.finditer(r"!\[([^\]]*)\]\(([^)\s]+)(?:\s*\"([^\"]*)\")?\)", md_content):
-            img_path = match.group(2)
-            
+            img_refs.append(match.group(2))
+
+        # HTML <img src="..."> tags
+        for match in re.finditer(r"<img\s+[^>]*?src\s*=\s*(['\"])\s*([^'\"]+)\s*\1", md_content, re.IGNORECASE):
+            img_refs.append(match.group(2))
+
+        # Deduplicate while preserving order
+        seen = set()
+        ordered_refs = []
+        for ref in img_refs:
+            if ref not in seen:
+                seen.add(ref)
+                ordered_refs.append(ref)
+
+        # Process collected references
+        for img_path in ordered_refs:
             # Skip external and absolute paths
-            if img_path.startswith(('http://', 'https://', 'data:')) or os.path.isabs(img_path):
+            if img_path.startswith(("http://", "https://", "data:")) or os.path.isabs(img_path):
                 continue
-                
+
             # Calculate absolute path relative to markdown file
             abs_img_path = os.path.normpath(os.path.join(os.path.dirname(file_path), img_path))
-            
+
             # Check if image exists
             if os.path.exists(abs_img_path) and os.path.isfile(abs_img_path):
                 # Create a flattened filename to avoid path issues
-                flat_img_name = img_path.replace("../", "").replace("./", "").replace(os.sep, "_")
+                flat_img_name = (
+                    img_path.replace("../", "").replace("./", "")
+                    .replace(os.sep, "_")
+                    .replace("/", "_")
+                )
                 name, ext = os.path.splitext(flat_img_name)
                 if not ext:
                     flat_img_name += ".png"
-                    
+
                 # Copy image to media directory
                 dest_path = os.path.join(media_dir, flat_img_name)
                 try:
@@ -88,7 +109,9 @@ class MarkdownProcessor(BaseDocumentProcessor):
                     # Create new reference path
                     new_link = os.path.join("media", flat_img_name).replace("\\", "/")
                     updated_links[img_path] = new_link
-                    logger.info(f"Copied local image '{img_path}' to media folder, new link: '{new_link}'")
+                    logger.info(
+                        f"Copied local image '{img_path}' to media folder, new link: '{new_link}'"
+                    )
                 except Exception as e:
                     logger.error(f"Failed to copy image {abs_img_path}: {e}")
             else:

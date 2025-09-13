@@ -1,4 +1,3 @@
-#!filepath document_processor/utils/file_utils.py
 import os
 import shutil
 import gc
@@ -7,7 +6,7 @@ import logging
 import json
 from typing import Dict, Any, Optional, Type
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__) 
 
 def safe_remove_directory(directory: str, max_attempts: int = 3, delay: int = 1) -> bool:
     """
@@ -149,15 +148,16 @@ class FileUtils:
         """
         import zipfile
         
+        # First, check if the essential markdown file exists.
+        if not (os.path.exists(markdown_filepath) and os.path.getsize(markdown_filepath) > 0):
+            logger.error(f"Markdown file {markdown_filepath} is missing or empty. ZIP package will not be created.")
+            return False
+
         logger.info(f"Creating ZIP package: {zip_filepath}")
         try:
             with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zf:
                 # Add markdown file
-                if os.path.exists(markdown_filepath) and os.path.getsize(markdown_filepath) > 0:
-                    zf.write(markdown_filepath, arcname=markdown_arcname)
-                else:
-                    logger.error(f"Markdown file {markdown_filepath} is missing or empty")
-                    return False
+                zf.write(markdown_filepath, arcname=markdown_arcname)
                 
                 # Add metadata if available
                 if metadata_filepath and os.path.exists(metadata_filepath):
@@ -181,4 +181,7 @@ class FileUtils:
             return True
         except Exception as e:
             logger.error(f"Failed to create ZIP package: {e}", exc_info=True)
+            # If something fails during zipping, ensure the partial zip is removed
+            if os.path.exists(zip_filepath):
+                os.remove(zip_filepath)
             return False
